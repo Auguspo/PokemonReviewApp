@@ -1,16 +1,34 @@
-﻿using PokemonReviewApp.Data;
+﻿using System.Xml.Linq;
+using PokemonReviewApp.Data;
 using PokemonReviewApp.Interfaces;
 using PokemonReviewApp.Models;
-using System.Xml.Linq;
 
 namespace PokemonReviewApp.Repository
 {
     public class PokemonRepository : IPokemonRepository
     {
         private readonly DataContext _context;
+
         public PokemonRepository(DataContext context)
         {
             _context = context;
+        }
+
+        public bool CreatePokemon(int ownerId, int categoryId, Pokemon pokemon)
+        {
+            var pokemonOwnerEntity = _context.Owners.Where(a => a.Id == ownerId).FirstOrDefault();
+            var category = _context.Categories.Where(a => a.Id == categoryId).FirstOrDefault();
+
+            var pokemonOwner = new PokemonOwner() { Owner = pokemonOwnerEntity, Pokemon = pokemon };
+
+            _context.Add(pokemonOwner);
+
+            var pokemonCategory = new PokemonCategory() { Category = category, Pokemon = pokemon };
+
+            _context.Add(pokemonCategory);
+            _context.Add(pokemon);
+
+            return Save();
         }
 
         public Pokemon GetPokemon(int id)
@@ -27,19 +45,27 @@ namespace PokemonReviewApp.Repository
         {
             var review = _context.Reviews.Where(p => p.Pokemon.Id == pokeId);
 
-            if(review.Count() <= 0)  return 0; 
+            if (review.Count() <= 0)
+                return 0;
 
             return ((decimal)review.Sum(r => r.Rating) / review.Count());
         }
 
         public ICollection<Pokemon> GetPokemons()
         {
-            return _context.Pokemon.OrderBy(p=>p.Id).ToList();
+            return _context.Pokemon.OrderBy(p => p.Id).ToList();
         }
 
         public bool PokemonExists(int pokeId)
         {
-            return  _context.Pokemon.Any(p => p.Id == pokeId);
+            return _context.Pokemon.Any(p => p.Id == pokeId);
+        }
+
+        public bool Save()
+        {
+            var saved = _context.SaveChanges();
+
+            return saved > 0 ? true : false;
         }
     }
 }
